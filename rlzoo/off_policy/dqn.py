@@ -4,9 +4,10 @@ from tensorflow.keras import activations
 from tensorflow.keras.optimizers import Adam
 
 from rlzoo.common import make_mlp
+from rlzoo.off_policy.base import BaseNetwork
 
 
-class QNetwork(tf.Module):
+class QNetwork(BaseNetwork):
     """
     Q-network for DQN
 
@@ -20,12 +21,12 @@ class QNetwork(tf.Module):
     """
 
     def __init__(self,
-                obs_dim,
-                act_dim,
-                hiddens=[32, 32],
-                activation=activations.tanh,
-                output_activation=activations.linear,
-                name="QNetwork"):
+                 obs_dim,
+                 act_dim,
+                 hiddens=[32, 32],
+                 activation=activations.tanh,
+                 output_activation=activations.linear,
+                 name="q_network"):
 
         super().__init__(name=name)
 
@@ -33,18 +34,6 @@ class QNetwork(tf.Module):
         self.act_dim = act_dim
         self.q1 = make_mlp([obs_dim] + hiddens + [act_dim], activation, output_activation)
         self.q2 = make_mlp([obs_dim] + hiddens + [act_dim], activation, output_activation)
-
-    @tf.function
-    def soft_update(self, other_network, tau):
-        other_variables = other_network.trainable_variables
-        current_variables = self.trainable_variables
-
-        for (current_var, other_var) in zip(current_variables, other_variables):
-            current_var.assign((1. - tau) * current_var + tau * other_var)
-
-    @tf.function
-    def hard_update(self, other_network):
-        self.soft_update(other_network, tau=1.)
 
     @tf.function
     def __call__(self, obs):
@@ -79,9 +68,10 @@ class DQN(tf.Module):
                  interval_target=2,
                  hiddens=[32, 32],
                  activation=activations.tanh,
-                 output_activation=activations.linear):
+                 output_activation=activations.linear,
+                 name="dqn"):
 
-        super().__init__(name="DQN")
+        super().__init__(name=name)
         self.obs_dim = obs_dim
         self.act_dim = act_dim
         self.tau = tau
@@ -92,21 +82,18 @@ class DQN(tf.Module):
         self.q_target = QNetwork(obs_dim, act_dim, hiddens, activation, output_activation, name="q_target")
         self.q_target.hard_update(self.q)
 
-        self.opt = Adam(lr=lr)
+        self.opt = Adam(lr=lr, name="q_optimizer")
 
     @tf.function
     def loss_fn(self, batch):
-        obs, act, next_obs, rew = batch["obs"], batch["act"], batch["next_obs"], batch["rew"]
 
-        q_target = self.q_target(next_obs)
+        q_target = self.q_target(batch["next_obs"])
 
-        q_target = tf.stop_gradient(rew + self.gamma * tf.reduce_max(q_target, axis=1, keepdims=True))
+        q_target = tf.stop_gradient(batch["rew"] + self.gamma * tf.reduce_max(q_target, axis=1, keepdims=True))
 
-        idx = tf.expand_dims(tf.range(0, obs.shape[0]), axis=1)  # (N, 1)
-        ind = tf.concat([idx, act], axis=1)
-        q = tf.expand_dims(tf.gather_nd(self.q(obs), ind), 1)
-
-        print(q.shape, q_target.shape)
+        idx = tf.expand_dims(tf.range(0, batch["obs"].shape[0]), axis=1)  # (N, 1)
+        ind = tf.concat([idx, batch["act"]], axis=1)
+        q = tf.expand_dims(tf.gather_nd(self.q(batch["obs"]), ind), 1)
 
         loss = tf.reduce_sum(tf.losses.MSE(q_target, q))
         return loss
@@ -130,6 +117,7 @@ class DQN(tf.Module):
         Returns:
             loss
         """
+
         loss = self.update_network(batch)
 
         if i % self.interval_target == 0:
