@@ -14,6 +14,6 @@ $ poetry install  # for installing dependencies
 
 | Yeear         | Algorithm           |     Link            |
 |---------------|---------------------|---------------------|
-| 2013          | DQN                 | [Playing Atari with Deep Reinforcement Learning](https://arxiv.org/abs/1312.5602) |
-|               |                     | |
+| 2013          | Deep Q-learning Network (DQN)                 | [Playing Atari with Deep Reinforcement Learning](https://arxiv.org/abs/1312.5602) |
+| 2015          | Deep Deterministic Policy Gradient (DDPG)     | [Continuous control with deep reinforcement learning](https://arxiv.org/abs/1509.02971)|
 |               |                     | |
