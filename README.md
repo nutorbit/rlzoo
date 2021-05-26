@@ -4,7 +4,7 @@ This repository contains an implementation of reinforcement learning algorithm w
 
 ## Setup
 
-I used [poetry](https://python-poetry.org/) to manage my work environment.
+I use [poetry](https://python-poetry.org/) to manage my work environment.
 
 ```zsh
 $ poetry install  # for installing dependencies
